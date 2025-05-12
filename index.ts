@@ -53,6 +53,8 @@ const endpoint = process.env.GRAPHDB_ENDPOINT || args[0] || "http://localhost:72
 const repository = process.env.GRAPHDB_REPOSITORY || args[1] || "";
 const username = process.env.GRAPHDB_USERNAME || "";
 const password = process.env.GRAPHDB_PASSWORD || "";
+const cfAccessClientId = process.env.CF_ACCESS_CLIENT_ID || "";
+const cfAccessClientSecret = process.env.CF_ACCESS_CLIENT_SECRET || "";
 
 if (!repository) {
     console.warn("No repository specified. Please set GRAPHDB_REPOSITORY environment variable or provide it as an argument.");
@@ -62,7 +64,12 @@ if (!repository) {
 let hasAuth = false;
 if (username && password) {
     hasAuth = true;
-    console.log(`Authentication enabled for user: ${username}`);
+}
+
+// Check if Cloudflare Access credentials were provided
+let hasCfAccess = false;
+if (cfAccessClientId && cfAccessClientSecret) {
+    hasCfAccess = true;
 }
 
 // Base URL for resources
@@ -92,6 +99,12 @@ async function executeSparqlQuery(query: string, accept = "application/sparql-re
         if (hasAuth) {
             const authString = Buffer.from(`${username}:${password}`).toString('base64');
             headers["Authorization"] = `Basic ${authString}`;
+        }
+
+        // Add Cloudflare Access headers if provided
+        if (hasCfAccess) {
+            headers["CF-Access-Client-Id"] = cfAccessClientId;
+            headers["CF-Access-Client-Secret"] = cfAccessClientSecret;
         }
 
         const response = await fetch(repositoryUrl, {
@@ -470,6 +483,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 if (hasAuth) {
                     const authString = Buffer.from(`${username}:${password}`).toString('base64');
                     headers["Authorization"] = `Basic ${authString}`;
+                }
+
+                // Add Cloudflare Access headers if provided
+                if (hasCfAccess) {
+                    headers["CF-Access-Client-Id"] = cfAccessClientId;
+                    headers["CF-Access-Client-Secret"] = cfAccessClientSecret;
                 }
 
                 const response = await fetch(repositoryUrl, {
